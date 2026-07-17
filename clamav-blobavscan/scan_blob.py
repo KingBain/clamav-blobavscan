@@ -36,6 +36,7 @@ RUNTIME = RuntimeState()
 def get_config():
     return {
         "STORAGE_ACCOUNT": os.getenv("STORAGE_ACCOUNT"),
+        "STORAGE_CONNECTION_STRING": os.getenv("STORAGE_CONNECTION_STRING"),
         "CLIENT_ID": os.getenv("CLIENT_ID"),
         "queue_name": os.getenv("queue_name") or "virus-scan",
         "result_queue_name": os.getenv("result_queue_name") or "clamav-scan-result",
@@ -47,10 +48,25 @@ def get_config():
 
 
 def initialize_clients(app_config):
+    connection_string = app_config.get("STORAGE_CONNECTION_STRING")
     storage_account = app_config["STORAGE_ACCOUNT"]
 
+    if connection_string:
+        RUNTIME.config = app_config
+        RUNTIME.queue_client = QueueClient.from_connection_string(
+            connection_string,
+            queue_name=app_config["queue_name"],
+        )
+        RUNTIME.result_queue_client = QueueClient.from_connection_string(
+            connection_string,
+            queue_name=app_config["result_queue_name"],
+        )
+        RUNTIME.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        RUNTIME.table_service_client = TableServiceClient.from_connection_string(connection_string)
+        return
+
     if not storage_account:
-        raise ValueError("STORAGE_ACCOUNT is required")
+        raise ValueError("STORAGE_ACCOUNT or STORAGE_CONNECTION_STRING is required")
 
     credential = DefaultAzureCredential(managed_identity_client_id=app_config["CLIENT_ID"])
 
