@@ -157,6 +157,18 @@ def test_process_message_quarantines_infected_blob(scanner, monkeypatch):
     assert blob.set_blob_metadata.call_args.kwargs["metadata"] == {"avscan": "fail", "avscan_reason": '["virus"]'}
 
 
+def test_process_message_records_infected_blob_without_quarantine(scanner, monkeypatch):
+    blob, quarantine_blob = configure_process(scanner, monkeypatch, ["virus"])
+    quarantine_blob.exists.return_value = False
+
+    scanner.process_message(message("/events/blobServices/default/containers/datahub/blobs/a"))
+
+    quarantine_blob.delete_blob.assert_not_called()
+    quarantine_blob.start_copy_from_url.assert_not_called()
+    blob.delete_blob.assert_not_called()
+    assert blob.set_blob_metadata.call_args.kwargs["metadata"] == {"avscan": "fail", "avscan_reason": '["virus"]'}
+
+
 def test_process_message_preserves_metadata_when_table_write_fails(scanner, monkeypatch):
     blob, _ = configure_process(scanner, monkeypatch, ["virus"])
     scanner.table_service_client.get_table_client.return_value.create_entity.side_effect = RuntimeError("table")
