@@ -9,20 +9,21 @@ def test_create_result_message_handles_clean_and_infected_results(scanner_module
     end.isoformat.return_value = "end"
 
     clean = scanner_module.create_result_message(
-        "blob-url",
-        start,
-        end,
-        [],
-        {"before": "value"},
-        {"avscan": "ok"},
+        blob_url="blob-url",
+        scan_start_time=start,
+        scan_end_time=end,
+        scan_result=[],
+        original_metadata={"before": "value"},
+        updated_metadata={"avscan": "ok"},
     )
+
     infected = scanner_module.create_result_message(
-        "blob-url",
-        start,
-        end,
-        ["virus"],
-        {},
-        {"avscan": "fail"},
+        blob_url="blob-url",
+        scan_start_time=start,
+        scan_end_time=end,
+        scan_result=["virus"],
+        original_metadata={},
+        updated_metadata={"avscan": "fail"},
     )
 
     assert clean["ScanError"] == ""
