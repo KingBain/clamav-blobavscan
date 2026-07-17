@@ -99,7 +99,7 @@ jobs:
             --fail-under=100
 
           python -m coverage xml \
-            --output TestResults/coverage.cobertura.xml
+            -o TestResults/coverage.cobertura.xml
 
       - name: Validate coverage report
         shell: bash
