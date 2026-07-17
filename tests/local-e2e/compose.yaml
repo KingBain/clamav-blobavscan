@@ -15,12 +15,9 @@ services:
       context: ../..
     entrypoint: ["python3", "/tests/local-e2e/setup.py"]
     environment: &scanner-environment
-      STORAGE_CONNECTION_STRING: >-
-        DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;
-        AccountKey=Eby8vdM02xNoGF+9W0ba2u5XK0q3Zz8q9K1Y4QzYc+P+AZ10J6iXHKhWXnkrL0T8Syb6vtL+z8YtKjlV+gvM4==;
-        BlobEndpoint=http://azurite:10000/devstoreaccount1;
-        QueueEndpoint=http://azurite:10001/devstoreaccount1;
-        TableEndpoint=http://azurite:10002/devstoreaccount1;
+      # This must remain a single line: YAML folded blocks add spaces after
+      # semicolons, which prevents the Azure SDK from finding AccountKey.
+      STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNoGF+9W0ba2u5XK0q3Zz8q9K1Y4QzYc+P+AZ10J6iXHKhWXnkrL0T8Syb6vtL+z8YtKjlV+gvM4==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
       queue_name: virus-scan
       result_queue_name: clamav-scan-result
       container_name: datahub

@@ -3,7 +3,18 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-trap 'docker compose down --volumes --remove-orphans' EXIT
+cleanup() {
+  status=$?
+
+  if [ "${status}" -ne 0 ]; then
+    docker compose logs --no-color || true
+  fi
+
+  docker compose down --volumes --remove-orphans
+  exit "${status}"
+}
+
+trap cleanup EXIT
 
 docker compose up --build --detach azurite
 docker compose run --rm setup
