@@ -30,8 +30,8 @@ def configure_blob(scanner_module, metadata=None, exists=True):
     blob_client.exists.return_value = exists
     blob_client.url = "https://storage.blob.core.windows.net/datahub/file.txt"
     blob_client.get_blob_properties.return_value = SimpleNamespace(metadata=metadata)
-    scanner_module.blob_service_client = MagicMock()
-    scanner_module.blob_service_client.get_blob_client.return_value = blob_client
+    scanner_module.RUNTIME.blob_service_client = MagicMock()
+    scanner_module.RUNTIME.blob_service_client.get_blob_client.return_value = blob_client
     return blob_client
 
 
@@ -41,9 +41,9 @@ def test_process_message_requires_initialized_config(scanner_module):
 
 
 def test_process_message_uses_module_config(scanner_module, monkeypatch):
-    scanner_module.config = make_config()
+    scanner_module.RUNTIME.config = make_config()
     blob_client = configure_blob(scanner_module, metadata={})
-    scanner_module.result_queue_client = MagicMock()
+    scanner_module.RUNTIME.result_queue_client = MagicMock()
     monkeypatch.setattr(scanner_module.pyclamd, "ClamdUnixSocket", MagicMock())
     monkeypatch.setattr(scanner_module, "scan_blob", MagicMock(return_value=[]))
 
@@ -54,7 +54,7 @@ def test_process_message_uses_module_config(scanner_module, monkeypatch):
 
 
 def test_process_message_skips_unconfigured_container(scanner_module):
-    scanner_module.blob_service_client = MagicMock()
+    scanner_module.RUNTIME.blob_service_client = MagicMock()
 
     result = scanner_module.process_message(
         make_message(container="other"),
@@ -62,7 +62,7 @@ def test_process_message_skips_unconfigured_container(scanner_module):
     )
 
     assert result is None
-    scanner_module.blob_service_client.get_blob_client.assert_not_called()
+    scanner_module.RUNTIME.blob_service_client.get_blob_client.assert_not_called()
 
 
 def test_process_message_returns_when_blob_is_missing(scanner_module):
@@ -83,7 +83,7 @@ def test_process_message_handles_clean_file(scanner_module, monkeypatch):
         "avscan_reason": "old value",
     }
     blob_client = configure_blob(scanner_module, metadata=original)
-    scanner_module.result_queue_client = MagicMock()
+    scanner_module.RUNTIME.result_queue_client = MagicMock()
     clamav_socket = object()
     monkeypatch.setattr(
         scanner_module.pyclamd,
@@ -111,13 +111,13 @@ def test_process_message_handles_clean_file(scanner_module, monkeypatch):
         "avscan": "ok",
     }
     blob_client.set_blob_metadata.assert_called_once_with(metadata=result["UpdatedBlobMetadata"])
-    sent = json.loads(scanner_module.result_queue_client.send_message.call_args.args[0])
+    sent = json.loads(scanner_module.RUNTIME.result_queue_client.send_message.call_args.args[0])
     assert sent == result
 
 
 def test_process_message_handles_none_metadata(scanner_module, monkeypatch):
     blob_client = configure_blob(scanner_module, metadata=None)
-    scanner_module.result_queue_client = MagicMock()
+    scanner_module.RUNTIME.result_queue_client = MagicMock()
     monkeypatch.setattr(scanner_module.pyclamd, "ClamdUnixSocket", MagicMock())
     monkeypatch.setattr(scanner_module, "scan_blob", MagicMock(return_value=[]))
 
@@ -139,7 +139,7 @@ def test_process_message_handles_infected_file_without_quarantine(
         scanner_module,
         metadata={"uploadedby": "john@example.ca"},
     )
-    scanner_module.result_queue_client = MagicMock()
+    scanner_module.RUNTIME.result_queue_client = MagicMock()
     monkeypatch.setattr(scanner_module.pyclamd, "ClamdUnixSocket", MagicMock())
     monkeypatch.setattr(
         scanner_module,
@@ -176,7 +176,7 @@ def test_process_message_handles_infected_file_with_quarantine(
     monkeypatch,
 ):
     blob_client = configure_blob(scanner_module, metadata={})
-    scanner_module.result_queue_client = MagicMock()
+    scanner_module.RUNTIME.result_queue_client = MagicMock()
     monkeypatch.setattr(scanner_module.pyclamd, "ClamdUnixSocket", MagicMock())
     monkeypatch.setattr(
         scanner_module,

@@ -34,8 +34,8 @@ def test_main_deletes_successes_and_requeues_failures(scanner_module):
     failed = SimpleNamespace(name="failed")
     pages = MagicMock()
     pages.by_page.return_value = [[successful, failed]]
-    scanner_module.queue_client = MagicMock()
-    scanner_module.queue_client.receive_messages.return_value = pages
+    scanner_module.RUNTIME.queue_client = MagicMock()
+    scanner_module.RUNTIME.queue_client.receive_messages.return_value = pages
 
     def process(message):
         if message is failed:
@@ -43,12 +43,12 @@ def test_main_deletes_successes_and_requeues_failures(scanner_module):
 
     scanner_module.main(process_function=process)
 
-    scanner_module.queue_client.receive_messages.assert_called_once_with(
+    scanner_module.RUNTIME.queue_client.receive_messages.assert_called_once_with(
         messages_per_page=10,
         visibility_timeout=14400,
     )
-    scanner_module.queue_client.delete_message.assert_called_once_with(successful)
-    scanner_module.queue_client.update_message.assert_called_once_with(
+    scanner_module.RUNTIME.queue_client.delete_message.assert_called_once_with(successful)
+    scanner_module.RUNTIME.queue_client.update_message.assert_called_once_with(
         message=failed,
         visibility_timeout=3600 * 8,
     )
@@ -58,15 +58,15 @@ def test_main_uses_default_process_function(scanner_module, monkeypatch):
     message = SimpleNamespace(name="message")
     pages = MagicMock()
     pages.by_page.return_value = [[message]]
-    scanner_module.queue_client = MagicMock()
-    scanner_module.queue_client.receive_messages.return_value = pages
+    scanner_module.RUNTIME.queue_client = MagicMock()
+    scanner_module.RUNTIME.queue_client.receive_messages.return_value = pages
     process_message = MagicMock()
     monkeypatch.setattr(scanner_module, "process_message", process_message)
 
     scanner_module.main()
 
     process_message.assert_called_once_with(message)
-    scanner_module.queue_client.delete_message.assert_called_once_with(message)
+    scanner_module.RUNTIME.queue_client.delete_message.assert_called_once_with(message)
 
 
 def test_run_initializes_clients_and_starts_main(scanner_module, monkeypatch):

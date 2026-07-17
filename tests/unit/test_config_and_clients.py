@@ -101,9 +101,9 @@ def test_initialize_clients_creates_expected_clients(scanner_module, monkeypatch
         endpoint="https://storage.table.core.windows.net/",
         credential=credential,
     )
-    assert scanner_module.config is app_config
+    assert scanner_module.RUNTIME.config is app_config
     assert scanner_module.credential is credential
-    assert scanner_module.queue_client == "input-queue"
-    assert scanner_module.result_queue_client == "result-queue"
-    assert scanner_module.blob_service_client == "blob-service"
-    assert scanner_module.table_service_client == "table-service"
+    assert scanner_module.RUNTIME.queue_client == "input-queue"
+    assert scanner_module.RUNTIME.result_queue_client == "result-queue"
+    assert scanner_module.RUNTIME.blob_service_client == "blob-service"
+    assert scanner_module.RUNTIME.table_service_client == "table-service"

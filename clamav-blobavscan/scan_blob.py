@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import time
+from dataclasses import dataclass
 from datetime import datetime
 
 import pyclamd
@@ -20,16 +21,16 @@ COPY_TIMEOUT_SECONDS = 300
 COPY_POLL_INTERVAL_SECONDS = 1
 
 
-# These are initialized by initialize_clients().
-#
-# Keeping them at module scope makes the application code familiar and allows
-# unit tests to replace them with MagicMock instances.
-config = None
-credential = None
-queue_client = None
-result_queue_client = None
-blob_service_client = None
-table_service_client = None
+@dataclass
+class RuntimeState:
+    config: dict | None = None
+    queue_client: QueueClient | None = None
+    result_queue_client: QueueClient | None = None
+    blob_service_client: BlobServiceClient | None = None
+    table_service_client: TableServiceClient | None = None
+
+
+RUNTIME = RuntimeState()
 
 
 def get_config():
@@ -46,40 +47,33 @@ def get_config():
 
 
 def initialize_clients(app_config):
-    global config
-    global credential
-    global queue_client
-    global result_queue_client
-    global blob_service_client
-    global table_service_client
-
     storage_account = app_config["STORAGE_ACCOUNT"]
 
     if not storage_account:
         raise ValueError("STORAGE_ACCOUNT is required")
 
-    config = app_config
+    credential = DefaultAzureCredential(managed_identity_client_id=app_config["CLIENT_ID"])
 
-    credential = DefaultAzureCredential(managed_identity_client_id=config["CLIENT_ID"])
+    RUNTIME.config = app_config
 
-    queue_client = QueueClient(
+    RUNTIME.queue_client = QueueClient(
         account_url=f"https://{storage_account}.queue.core.windows.net/",
-        queue_name=config["queue_name"],
+        queue_name=app_config["queue_name"],
         credential=credential,
     )
 
-    result_queue_client = QueueClient(
+    RUNTIME.result_queue_client = QueueClient(
         account_url=f"https://{storage_account}.queue.core.windows.net/",
-        queue_name=config["result_queue_name"],
+        queue_name=app_config["result_queue_name"],
         credential=credential,
     )
 
-    blob_service_client = BlobServiceClient(
+    RUNTIME.blob_service_client = BlobServiceClient(
         account_url=f"https://{storage_account}.blob.core.windows.net/",
         credential=credential,
     )
 
-    table_service_client = TableServiceClient(
+    RUNTIME.table_service_client = TableServiceClient(
         endpoint=f"https://{storage_account}.table.core.windows.net/",
         credential=credential,
     )
@@ -105,14 +99,17 @@ def scan_blob(
     while chunk_start < blob_size:
         chunk_end = min(chunk_start + chunk_size, blob_size) - 1
 
-        print(f"FSDH - Downloading chunk {chunk_index} to tempfile: " f"bytes {chunk_start} to {chunk_end}")
+        print(f"FSDH - Downloading chunk {chunk_index} to tempfile: bytes {chunk_start} to {chunk_end}")
 
         with tempfile.NamedTemporaryFile(
             delete=True,
             suffix="filechunk",
             dir=work_dir,
         ) as temp_file:
-            print(f"FSDH - chunk scan as tempfile: {blob_full_name} " f"chunk {chunk_index} tempfile {temp_file.name}")
+            print(
+                f"FSDH - chunk scan as tempfile: {blob_full_name} "
+                f"chunk {chunk_index} tempfile {temp_file.name}"
+            )
 
             download = blob_client.download_blob(
                 offset=chunk_start,
@@ -133,12 +130,12 @@ def scan_blob(
 
             result = clamav_socket.scan_file(temp_file.name)
 
-            print(f"FSDH - chunk scan completed: " f"{blob_full_name} chunk {chunk_index}")
+            print(f"FSDH - chunk scan completed: {blob_full_name} chunk {chunk_index}")
 
             threat_found = False
 
             if result is None:
-                print(f"FSDH - scan result None: " f"{blob_full_name} chunk {chunk_index}")
+                print(f"FSDH - scan result None: {blob_full_name} chunk {chunk_index}")
             else:
                 for filename, scan_details in result.items():
                     status, virus = scan_details
@@ -154,7 +151,7 @@ def scan_blob(
                         )
 
                     elif status == "OK":
-                        print(f"FSDH - chunk result OK: " f"{blob_full_name} chunk {chunk_index} " f"{filename}")
+                        print(f"FSDH - chunk result OK: {blob_full_name} chunk {chunk_index} {filename}")
 
                     else:
                         print(
@@ -164,10 +161,10 @@ def scan_blob(
                         )
 
             if threat_found:
-                print(f"FSDH - Infected blob chunk " f"{chunk_index}: {blob_full_name}")
+                print(f"FSDH - Infected blob chunk {chunk_index}: {blob_full_name}")
                 break
 
-            print(f"FSDH - blob chunk {chunk_index} " f"is clean: {blob_full_name}")
+            print(f"FSDH - blob chunk {chunk_index} is clean: {blob_full_name}")
 
         chunk_start += chunk_size
         chunk_index += 1
@@ -227,10 +224,10 @@ def wait_for_copy_completion(quarantine_blob_client):
             return
 
         if status in ("failed", "aborted"):
-            raise RuntimeError(f"Blob copy {status}: " f"{status_description or 'no details available'}")
+            raise RuntimeError(f"Blob copy {status}: {status_description or 'no details available'}")
 
         if time.monotonic() >= deadline:
-            raise TimeoutError("Blob copy did not finish within " f"{COPY_TIMEOUT_SECONDS} seconds")
+            raise TimeoutError(f"Blob copy did not finish within {COPY_TIMEOUT_SECONDS} seconds")
 
         time.sleep(COPY_POLL_INTERVAL_SECONDS)
 
@@ -239,7 +236,10 @@ def record_infected_file(
     blob_name_with_container,
     scan_result,
 ):
-    table_client = table_service_client.get_table_client(table_name="infectedfiles")
+    if RUNTIME.table_service_client is None:
+        raise RuntimeError("Table service client has not been initialized")
+
+    table_client = RUNTIME.table_service_client.get_table_client(table_name="infectedfiles")
 
     entity = {
         "PartitionKey": blob_name_with_container.replace("/", "|||"),
@@ -260,17 +260,20 @@ def move_blob_to_quarantine(
     updated_metadata,
     app_config,
 ):
-    quarantine_blob_client = blob_service_client.get_blob_client(
+    if RUNTIME.blob_service_client is None:
+        raise RuntimeError("Blob service client has not been initialized")
+
+    quarantine_blob_client = RUNTIME.blob_service_client.get_blob_client(
         container=app_config["quarantine_container_name"],
         blob=f"{source_container}/{source_blob_name}",
     )
 
     if quarantine_blob_client.exists():
-        print(f"FSDH - blob {source_blob_name} already exists " "in quarantine container, deleting")
+        print(f"FSDH - blob {source_blob_name} already exists in quarantine container, deleting")
 
         quarantine_blob_client.delete_blob()
 
-    print(f"FSDH - copying blob {source_blob_name} " "to quarantine container")
+    print(f"FSDH - copying blob {source_blob_name} to quarantine container")
 
     quarantine_blob_client.start_copy_from_url(source_blob_client.url)
 
@@ -284,6 +287,7 @@ def move_blob_to_quarantine(
 
 
 def create_result_message(
+    *,
     blob_url,
     scan_start_time,
     scan_end_time,
@@ -303,7 +307,7 @@ def create_result_message(
 
 def process_message(message, app_config=None):
     if app_config is None:
-        app_config = config
+        app_config = RUNTIME.config
 
     if app_config is None:
         raise RuntimeError("Application configuration has not been initialized")
@@ -333,13 +337,16 @@ def process_message(message, app_config=None):
         )
         return None
 
-    blob_client = blob_service_client.get_blob_client(
+    if RUNTIME.blob_service_client is None:
+        raise RuntimeError("Blob service client has not been initialized")
+
+    blob_client = RUNTIME.blob_service_client.get_blob_client(
         container=blob_name_container,
         blob=blob_name_in_container,
     )
 
     if not blob_client.exists():
-        print(f"FSDH - blob not found: " f"{blob_name_in_container} at {blob_url}")
+        print(f"FSDH - blob not found: {blob_name_in_container} at {blob_url}")
         return None
 
     blob_properties = blob_client.get_blob_properties()
@@ -400,7 +407,10 @@ def process_message(message, app_config=None):
         updated_metadata=updated_metadata,
     )
 
-    result_queue_client.send_message(json.dumps(result_message))
+    if RUNTIME.result_queue_client is None:
+        raise RuntimeError("Result queue client has not been initialized")
+
+    RUNTIME.result_queue_client.send_message(json.dumps(result_message))
 
     return result_message
 
@@ -408,6 +418,11 @@ def process_message(message, app_config=None):
 def main(process_function=None):
     if process_function is None:
         process_function = process_message
+
+    if RUNTIME.queue_client is None:
+        raise RuntimeError("Queue client has not been initialized")
+
+    queue_client = RUNTIME.queue_client
 
     messages = queue_client.receive_messages(
         messages_per_page=10,

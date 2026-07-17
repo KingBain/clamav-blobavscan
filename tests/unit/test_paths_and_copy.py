@@ -5,8 +5,8 @@ import pytest
 
 
 def test_split_blob_path_returns_expected_parts(scanner_module):
-    subject = "/blobServices/default/containers/" "datahub/blobs/folder/file.txt"
-
+    subject = "/blobServices/default/containers/datahub/blobs/folder/file.txt"
+    
     assert scanner_module.split_blob_path(subject) == (
         "datahub",
         "folder/file.txt",
@@ -104,8 +104,8 @@ def test_wait_for_copy_completion_times_out(scanner_module, monkeypatch):
 
 def test_record_infected_file_creates_expected_entity(scanner_module, monkeypatch):
     table_client = MagicMock()
-    scanner_module.table_service_client = MagicMock()
-    scanner_module.table_service_client.get_table_client.return_value = table_client
+    scanner_module.RUNTIME.table_service_client = MagicMock()
+    scanner_module.RUNTIME.table_service_client.get_table_client.return_value = table_client
 
     fake_now = MagicMock()
     fake_now.now.return_value.isoformat.return_value = "2026-07-17T12:00:00"
@@ -116,7 +116,7 @@ def test_record_infected_file_creates_expected_entity(scanner_module, monkeypatc
         ["Eicar-Signature"],
     )
 
-    scanner_module.table_service_client.get_table_client.assert_called_once_with(table_name="infectedfiles")
+    scanner_module.RUNTIME.table_service_client.get_table_client.assert_called_once_with(table_name="infectedfiles")
     table_client.create_entity.assert_called_once_with(
         entity={
             "PartitionKey": "|||datahub|||eicar.txt",
@@ -132,8 +132,8 @@ def test_move_blob_to_quarantine_replaces_existing_blob(scanner_module, monkeypa
     source.url = "https://storage/datahub/eicar.txt"
     quarantine = MagicMock()
     quarantine.exists.return_value = True
-    scanner_module.blob_service_client = MagicMock()
-    scanner_module.blob_service_client.get_blob_client.return_value = quarantine
+    scanner_module.RUNTIME.blob_service_client = MagicMock()
+    scanner_module.RUNTIME.blob_service_client.get_blob_client.return_value = quarantine
     wait_for_copy = MagicMock()
     monkeypatch.setattr(scanner_module, "wait_for_copy_completion", wait_for_copy)
 
@@ -148,7 +148,7 @@ def test_move_blob_to_quarantine_replaces_existing_blob(scanner_module, monkeypa
         config,
     )
 
-    scanner_module.blob_service_client.get_blob_client.assert_called_once_with(
+    scanner_module.RUNTIME.blob_service_client.get_blob_client.assert_called_once_with(
         container="quarantine",
         blob="datahub/folder/eicar.txt",
     )
@@ -167,8 +167,8 @@ def test_move_blob_to_quarantine_does_not_delete_missing_destination(
     source.url = "source-url"
     quarantine = MagicMock()
     quarantine.exists.return_value = False
-    scanner_module.blob_service_client = MagicMock()
-    scanner_module.blob_service_client.get_blob_client.return_value = quarantine
+    scanner_module.RUNTIME.blob_service_client = MagicMock()
+    scanner_module.RUNTIME.blob_service_client.get_blob_client.return_value = quarantine
     monkeypatch.setattr(scanner_module, "wait_for_copy_completion", MagicMock())
 
     scanner_module.move_blob_to_quarantine(
