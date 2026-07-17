@@ -14,6 +14,7 @@
 		},
 		"ghcr.io/devcontainers/features/docker-in-docker:4": {
 			"azureDnsAutoDetection": true,
+			"moby": false,
 			"installDockerBuildx": true,
 			"iptablesSwitchAtRuntime": true,
 			"version": "latest",
