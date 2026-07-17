@@ -62,9 +62,7 @@ def initialize_clients(app_config):
 
     config = app_config
 
-    credential = DefaultAzureCredential(
-        managed_identity_client_id=config["CLIENT_ID"]
-    )
+    credential = DefaultAzureCredential(managed_identity_client_id=config["CLIENT_ID"])
 
     queue_client = QueueClient(
         account_url=f"https://{storage_account}.queue.core.windows.net/",
@@ -144,16 +142,14 @@ def scan_blob(
             result = clamav_socket.scan_file(temp_file.name)
 
             print(
-                f"FSDH - chunk scan completed: "
-                f"{blob_full_name} chunk {chunk_index}"
+                f"FSDH - chunk scan completed: " f"{blob_full_name} chunk {chunk_index}"
             )
 
             threat_found = False
 
             if result is None:
                 print(
-                    f"FSDH - scan result None: "
-                    f"{blob_full_name} chunk {chunk_index}"
+                    f"FSDH - scan result None: " f"{blob_full_name} chunk {chunk_index}"
                 )
             else:
                 for filename, scan_details in result.items():
@@ -184,16 +180,10 @@ def scan_blob(
                         )
 
             if threat_found:
-                print(
-                    f"FSDH - Infected blob chunk "
-                    f"{chunk_index}: {blob_full_name}"
-                )
+                print(f"FSDH - Infected blob chunk " f"{chunk_index}: {blob_full_name}")
                 break
 
-            print(
-                f"FSDH - blob chunk {chunk_index} "
-                f"is clean: {blob_full_name}"
-            )
+            print(f"FSDH - blob chunk {chunk_index} " f"is clean: {blob_full_name}")
 
         chunk_start += chunk_size
         chunk_index += 1
@@ -204,24 +194,16 @@ def scan_blob(
 def split_blob_path(blob_name_full):
     parts = blob_name_full.strip("/").split("/")
 
-    valid_path = (
-        len(parts) >= 6
-        and parts[2] == "containers"
-        and parts[4] == "blobs"
-    )
+    valid_path = len(parts) >= 6 and parts[2] == "containers" and parts[4] == "blobs"
 
     if not valid_path:
-        raise ValueError(
-            f"Invalid Azure Blob Storage event subject: {blob_name_full}"
-        )
+        raise ValueError(f"Invalid Azure Blob Storage event subject: {blob_name_full}")
 
     container = parts[3]
     blob_in_container = "/".join(parts[5:])
 
     if not container or not blob_in_container:
-        raise ValueError(
-            f"Invalid Azure Blob Storage event subject: {blob_name_full}"
-        )
+        raise ValueError(f"Invalid Azure Blob Storage event subject: {blob_name_full}")
 
     blob_name_with_container = f"/{container}/{blob_in_container}"
 
@@ -270,8 +252,7 @@ def wait_for_copy_completion(quarantine_blob_client):
 
         if time.monotonic() >= deadline:
             raise TimeoutError(
-                "Blob copy did not finish within "
-                f"{COPY_TIMEOUT_SECONDS} seconds"
+                "Blob copy did not finish within " f"{COPY_TIMEOUT_SECONDS} seconds"
             )
 
         time.sleep(COPY_POLL_INTERVAL_SECONDS)
@@ -281,9 +262,7 @@ def record_infected_file(
     blob_name_with_container,
     scan_result,
 ):
-    table_client = table_service_client.get_table_client(
-        table_name="infectedfiles"
-    )
+    table_client = table_service_client.get_table_client(table_name="infectedfiles")
 
     entity = {
         "PartitionKey": blob_name_with_container.replace("/", "|||"),
@@ -317,21 +296,14 @@ def move_blob_to_quarantine(
 
         quarantine_blob_client.delete_blob()
 
-    print(
-        f"FSDH - copying blob {source_blob_name} "
-        "to quarantine container"
-    )
+    print(f"FSDH - copying blob {source_blob_name} " "to quarantine container")
 
-    quarantine_blob_client.start_copy_from_url(
-        source_blob_client.url
-    )
+    quarantine_blob_client.start_copy_from_url(source_blob_client.url)
 
     wait_for_copy_completion(quarantine_blob_client)
 
     # Ensure the quarantined file contains the antivirus result metadata.
-    quarantine_blob_client.set_blob_metadata(
-        metadata=updated_metadata
-    )
+    quarantine_blob_client.set_blob_metadata(metadata=updated_metadata)
 
     # Delete the source only after the quarantine copy completes.
     source_blob_client.delete_blob()
@@ -360,13 +332,9 @@ def process_message(message, app_config=None):
         app_config = config
 
     if app_config is None:
-        raise RuntimeError(
-            "Application configuration has not been initialized"
-        )
+        raise RuntimeError("Application configuration has not been initialized")
 
-    event = json.loads(
-        base64.b64decode(message.content)
-    )
+    event = json.loads(base64.b64decode(message.content))
 
     (
         blob_name_container,
@@ -399,17 +367,12 @@ def process_message(message, app_config=None):
     )
 
     if not blob_client.exists():
-        print(
-            f"FSDH - blob not found: "
-            f"{blob_name_in_container} at {blob_url}"
-        )
+        print(f"FSDH - blob not found: " f"{blob_name_in_container} at {blob_url}")
         return None
 
     blob_properties = blob_client.get_blob_properties()
 
-    original_metadata = dict(
-        blob_properties.metadata or {}
-    )
+    original_metadata = dict(blob_properties.metadata or {})
 
     clamav_socket = pyclamd.ClamdUnixSocket()
 
@@ -430,19 +393,14 @@ def process_message(message, app_config=None):
         print(f"FSDH - Infected blob {blob_name_full}")
 
         updated_metadata["avscan"] = "fail"
-        updated_metadata["avscan_reason"] = json.dumps(
-            scan_result
-        )
+        updated_metadata["avscan_reason"] = json.dumps(scan_result)
 
         record_infected_file(
             blob_name_with_container,
             scan_result,
         )
 
-        quarantine_enabled = (
-            app_config["ENABLE_QUARANTINE"].lower()
-            == "true"
-        )
+        quarantine_enabled = app_config["ENABLE_QUARANTINE"].lower() == "true"
 
         if quarantine_enabled:
             move_blob_to_quarantine(
@@ -453,17 +411,13 @@ def process_message(message, app_config=None):
                 app_config=app_config,
             )
         else:
-            blob_client.set_blob_metadata(
-                metadata=updated_metadata
-            )
+            blob_client.set_blob_metadata(metadata=updated_metadata)
 
     else:
         updated_metadata["avscan"] = "ok"
         updated_metadata.pop("avscan_reason", None)
 
-        blob_client.set_blob_metadata(
-            metadata=updated_metadata
-        )
+        blob_client.set_blob_metadata(metadata=updated_metadata)
 
     result_message = create_result_message(
         blob_url=blob_url,
@@ -474,9 +428,7 @@ def process_message(message, app_config=None):
         updated_metadata=updated_metadata,
     )
 
-    result_queue_client.send_message(
-        json.dumps(result_message)
-    )
+    result_queue_client.send_message(json.dumps(result_message))
 
     return result_message
 
@@ -497,9 +449,7 @@ def main(process_function=None):
                 queue_client.delete_message(message)
 
             except Exception as error:  # pylint: disable=broad-exception-caught
-                print(
-                    f"FSDH - Error processing message: {error}"
-                )
+                print(f"FSDH - Error processing message: {error}")
 
                 queue_client.update_message(
                     message=message,
