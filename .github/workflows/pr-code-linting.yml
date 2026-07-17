@@ -64,17 +64,21 @@ jobs:
         uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPPRESS_POSSUM: true
+          SAVE_SUPER_LINTER_SUMMARY: true
+          FAIL_ON_INVALID_GITHUB_ACTIONS_EVENT_CONFIGURATION: true
+          NO_COLOR: "1"
+          FORCE_COLOR: "0"
+          TERM: dumb
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_CHECKOV: false
           VALIDATE_JSCPD: false
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           VALIDATE_TRIVY: false
-          SUPPRESS_POSSUM: true
+          VALIDATE_PYTHON_RUFF: false
+          VALIDATE_PYTHON_RUFF_FORMAT: false
           LINTER_RULES_PATH: /
-          DISABLE_ERRORS: true
-          SAVE_SUPER_LINTER_SUMMARY: true
-          FAIL_ON_INVALID_GITHUB_ACTIONS_EVENT_CONFIGURATION: true
-          NO_COLOR: "1"
-          FORCE_COLOR: "0"
-          TERM: dumb
+          PYTHON_BLACK_CONFIG_FILE: pyproject.toml
+          PYTHON_FLAKE8_CONFIG_FILE: .flake8
+          PYTHON_PYLINT_CONFIG_FILE: .pylintrc
