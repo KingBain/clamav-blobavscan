@@ -81,9 +81,7 @@ def test_initialize_clients_creates_expected_clients(scanner_module, monkeypatch
 
     scanner_module.initialize_clients(app_config)
 
-    default_credential.assert_called_once_with(
-        managed_identity_client_id="client-id"
-    )
+    default_credential.assert_called_once_with(managed_identity_client_id="client-id")
     assert queue_constructor.call_count == 2
     queue_constructor.assert_any_call(
         account_url="https://storage.queue.core.windows.net/",

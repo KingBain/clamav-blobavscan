@@ -5,10 +5,7 @@ import pytest
 
 
 def test_split_blob_path_returns_expected_parts(scanner_module):
-    subject = (
-        "/blobServices/default/containers/"
-        "datahub/blobs/folder/file.txt"
-    )
+    subject = "/blobServices/default/containers/" "datahub/blobs/folder/file.txt"
 
     assert scanner_module.split_blob_path(subject) == (
         "datahub",
@@ -40,12 +37,11 @@ def test_split_blob_path_rejects_empty_container(scanner_module):
 
 def test_get_copy_status_handles_none_dict_and_object(scanner_module):
     assert scanner_module.get_copy_status(None) == (None, None)
-    assert scanner_module.get_copy_status(
-        {"status": "failed", "status_description": "bad"}
-    ) == ("failed", "bad")
-    assert scanner_module.get_copy_status(
-        SimpleNamespace(status="success", status_description=None)
-    ) == ("success", None)
+    assert scanner_module.get_copy_status({"status": "failed", "status_description": "bad"}) == ("failed", "bad")
+    assert scanner_module.get_copy_status(SimpleNamespace(status="success", status_description=None)) == (
+        "success",
+        None,
+    )
 
 
 def test_wait_for_copy_completion_waits_then_succeeds(scanner_module, monkeypatch):
@@ -86,9 +82,7 @@ def test_wait_for_copy_completion_uses_default_error_description(
     monkeypatch,
 ):
     client = MagicMock()
-    client.get_blob_properties.return_value = SimpleNamespace(
-        copy={"status": "failed", "status_description": ""}
-    )
+    client.get_blob_properties.return_value = SimpleNamespace(copy={"status": "failed", "status_description": ""})
     monkeypatch.setattr(scanner_module.time, "monotonic", MagicMock(return_value=0))
 
     with pytest.raises(RuntimeError, match="no details available"):
@@ -97,9 +91,7 @@ def test_wait_for_copy_completion_uses_default_error_description(
 
 def test_wait_for_copy_completion_times_out(scanner_module, monkeypatch):
     client = MagicMock()
-    client.get_blob_properties.return_value = SimpleNamespace(
-        copy=SimpleNamespace(status="pending")
-    )
+    client.get_blob_properties.return_value = SimpleNamespace(copy=SimpleNamespace(status="pending"))
     monkeypatch.setattr(
         scanner_module.time,
         "monotonic",
@@ -124,9 +116,7 @@ def test_record_infected_file_creates_expected_entity(scanner_module, monkeypatc
         ["Eicar-Signature"],
     )
 
-    scanner_module.table_service_client.get_table_client.assert_called_once_with(
-        table_name="infectedfiles"
-    )
+    scanner_module.table_service_client.get_table_client.assert_called_once_with(table_name="infectedfiles")
     table_client.create_entity.assert_called_once_with(
         entity={
             "PartitionKey": "|||datahub|||eicar.txt",

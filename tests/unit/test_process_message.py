@@ -8,20 +8,10 @@ import pytest
 
 def make_message(container="datahub", blob="file.txt"):
     event = {
-        "subject": (
-            "/blobServices/default/containers/"
-            f"{container}/blobs/{blob}"
-        ),
-        "data": {
-            "blobUrl": (
-                "https://storage.blob.core.windows.net/"
-                f"{container}/{blob}"
-            )
-        },
+        "subject": ("/blobServices/default/containers/" f"{container}/blobs/{blob}"),
+        "data": {"blobUrl": ("https://storage.blob.core.windows.net/" f"{container}/{blob}")},
     }
-    return SimpleNamespace(
-        content=base64.b64encode(json.dumps(event).encode()).decode()
-    )
+    return SimpleNamespace(content=base64.b64encode(json.dumps(event).encode()).decode())
 
 
 def make_config(**overrides):
@@ -39,9 +29,7 @@ def configure_blob(scanner_module, metadata=None, exists=True):
     blob_client = MagicMock()
     blob_client.exists.return_value = exists
     blob_client.url = "https://storage.blob.core.windows.net/datahub/file.txt"
-    blob_client.get_blob_properties.return_value = SimpleNamespace(
-        metadata=metadata
-    )
+    blob_client.get_blob_properties.return_value = SimpleNamespace(metadata=metadata)
     scanner_module.blob_service_client = MagicMock()
     scanner_module.blob_service_client.get_blob_client.return_value = blob_client
     return blob_client
@@ -62,9 +50,7 @@ def test_process_message_uses_module_config(scanner_module, monkeypatch):
     result = scanner_module.process_message(make_message())
 
     assert result["UpdatedBlobMetadata"] == {"avscan": "ok"}
-    blob_client.set_blob_metadata.assert_called_once_with(
-        metadata={"avscan": "ok"}
-    )
+    blob_client.set_blob_metadata.assert_called_once_with(metadata={"avscan": "ok"})
 
 
 def test_process_message_skips_unconfigured_container(scanner_module):
@@ -124,12 +110,8 @@ def test_process_message_handles_clean_file(scanner_module, monkeypatch):
         "uploadedby": "john@example.ca",
         "avscan": "ok",
     }
-    blob_client.set_blob_metadata.assert_called_once_with(
-        metadata=result["UpdatedBlobMetadata"]
-    )
-    sent = json.loads(
-        scanner_module.result_queue_client.send_message.call_args.args[0]
-    )
+    blob_client.set_blob_metadata.assert_called_once_with(metadata=result["UpdatedBlobMetadata"])
+    sent = json.loads(scanner_module.result_queue_client.send_message.call_args.args[0])
     assert sent == result
 
 
@@ -146,9 +128,7 @@ def test_process_message_handles_none_metadata(scanner_module, monkeypatch):
 
     assert result["OriginalBlobMetadata"] == {}
     assert result["UpdatedBlobMetadata"] == {"avscan": "ok"}
-    blob_client.set_blob_metadata.assert_called_once_with(
-        metadata={"avscan": "ok"}
-    )
+    blob_client.set_blob_metadata.assert_called_once_with(metadata={"avscan": "ok"})
 
 
 def test_process_message_handles_infected_file_without_quarantine(
@@ -186,9 +166,7 @@ def test_process_message_handles_infected_file_without_quarantine(
         ["Eicar-Signature"],
     )
     move.assert_not_called()
-    blob_client.set_blob_metadata.assert_called_once_with(
-        metadata=expected_metadata
-    )
+    blob_client.set_blob_metadata.assert_called_once_with(metadata=expected_metadata)
     assert result["ScanError"] == '["Eicar-Signature"]'
     assert result["UpdatedBlobMetadata"] == expected_metadata
 

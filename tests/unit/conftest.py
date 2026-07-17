@@ -1,18 +1,14 @@
-from importlib import util
-from pathlib import Path
 import sys
 import uuid
+from importlib import util
+from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture
 def scanner_module():
-    module_path = (
-        Path(__file__).resolve().parents[2]
-        / "clamav-blobavscan"
-        / "scan_blob.py"
-    )
+    module_path = Path(__file__).resolve().parents[2] / "clamav-blobavscan" / "scan_blob.py"
     module_name = f"scan_blob_{uuid.uuid4().hex}"
     spec = util.spec_from_file_location(module_name, module_path)
     module = util.module_from_spec(spec)

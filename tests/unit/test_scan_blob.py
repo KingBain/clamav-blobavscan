@@ -89,9 +89,7 @@ def test_scan_blob_returns_threat_and_stops_after_infected_chunk(
     ]
 
     clamav_socket = MagicMock()
-    clamav_socket.scan_file.side_effect = lambda path: {
-        path: ("FOUND", "Eicar-Signature")
-    }
+    clamav_socket.scan_file.side_effect = lambda path: {path: ("FOUND", "Eicar-Signature")}
 
     result = scanner_module.scan_blob(
         blob_client,
