@@ -15,7 +15,6 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueClient
 
-
 CHUNK_SIZE = 1024 * 1024 * 1024
 COPY_TIMEOUT_SECONDS = 300
 COPY_POLL_INTERVAL_SECONDS = 1
