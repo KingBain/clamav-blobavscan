@@ -77,6 +77,11 @@ def test_process_message_returns_when_blob_is_missing(scanner_module):
     blob_client.get_blob_properties.assert_not_called()
 
 
+def test_process_message_requires_initialized_blob_service_client(scanner_module):
+    with pytest.raises(RuntimeError, match="Blob service client has not been initialized"):
+        scanner_module.process_message(make_message(), app_config=make_config())
+
+
 def test_process_message_handles_clean_file(scanner_module, monkeypatch):
     original = {
         "uploadedby": "john@example.ca",
@@ -128,6 +133,17 @@ def test_process_message_handles_none_metadata(scanner_module, monkeypatch):
 
     assert result["OriginalBlobMetadata"] == {}
     assert result["UpdatedBlobMetadata"] == {"avscan": "ok"}
+    blob_client.set_blob_metadata.assert_called_once_with(metadata={"avscan": "ok"})
+
+
+def test_process_message_requires_initialized_result_queue_client(scanner_module, monkeypatch):
+    blob_client = configure_blob(scanner_module, metadata={})
+    monkeypatch.setattr(scanner_module.pyclamd, "ClamdUnixSocket", MagicMock())
+    monkeypatch.setattr(scanner_module, "scan_blob", MagicMock(return_value=[]))
+
+    with pytest.raises(RuntimeError, match="Result queue client has not been initialized"):
+        scanner_module.process_message(make_message(), app_config=make_config())
+
     blob_client.set_blob_metadata.assert_called_once_with(metadata={"avscan": "ok"})
 
 

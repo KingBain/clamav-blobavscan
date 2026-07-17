@@ -106,10 +106,10 @@ def scan_blob(
             suffix="filechunk",
             dir=work_dir,
         ) as temp_file:
-            print(
-                f"FSDH - chunk scan as tempfile: {blob_full_name} "
-                f"chunk {chunk_index} tempfile {temp_file.name}"
+            temp_file_message = (
+                f"FSDH - chunk scan as tempfile: {blob_full_name} " f"chunk {chunk_index} tempfile {temp_file.name}"
             )
+            print(temp_file_message)
 
             download = blob_client.download_blob(
                 offset=chunk_start,
@@ -175,16 +175,13 @@ def scan_blob(
 def split_blob_path(blob_name_full):
     parts = blob_name_full.strip("/").split("/")
 
-    valid_path = len(parts) >= 6 and parts[2] == "containers" and parts[4] == "blobs"
+    valid_path = len(parts) >= 6 and parts[2] == "containers" and parts[3] and parts[4] == "blobs"
 
     if not valid_path:
         raise ValueError(f"Invalid Azure Blob Storage event subject: {blob_name_full}")
 
     container = parts[3]
     blob_in_container = "/".join(parts[5:])
-
-    if not container or not blob_in_container:
-        raise ValueError(f"Invalid Azure Blob Storage event subject: {blob_name_full}")
 
     blob_name_with_container = f"/{container}/{blob_in_container}"
 

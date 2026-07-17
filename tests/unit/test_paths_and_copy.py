@@ -6,7 +6,7 @@ import pytest
 
 def test_split_blob_path_returns_expected_parts(scanner_module):
     subject = "/blobServices/default/containers/datahub/blobs/folder/file.txt"
-    
+
     assert scanner_module.split_blob_path(subject) == (
         "datahub",
         "folder/file.txt",
@@ -30,6 +30,13 @@ def test_split_blob_path_rejects_invalid_structure(scanner_module, subject):
 
 def test_split_blob_path_rejects_empty_container(scanner_module):
     subject = "/blobServices/default/containers//blobs/file.txt"
+
+    with pytest.raises(ValueError, match="Invalid Azure Blob Storage"):
+        scanner_module.split_blob_path(subject)
+
+
+def test_split_blob_path_rejects_empty_blob_name(scanner_module):
+    subject = "/blobServices/default/containers/datahub/blobs/"
 
     with pytest.raises(ValueError, match="Invalid Azure Blob Storage"):
         scanner_module.split_blob_path(subject)
@@ -127,6 +134,11 @@ def test_record_infected_file_creates_expected_entity(scanner_module, monkeypatc
     )
 
 
+def test_record_infected_file_requires_initialized_table_client(scanner_module):
+    with pytest.raises(RuntimeError, match="Table service client has not been initialized"):
+        scanner_module.record_infected_file("/datahub/eicar.txt", ["Eicar-Signature"])
+
+
 def test_move_blob_to_quarantine_replaces_existing_blob(scanner_module, monkeypatch):
     source = MagicMock()
     source.url = "https://storage/datahub/eicar.txt"
@@ -180,3 +192,14 @@ def test_move_blob_to_quarantine_does_not_delete_missing_destination(
     )
 
     quarantine.delete_blob.assert_not_called()
+
+
+def test_move_blob_to_quarantine_requires_initialized_blob_client(scanner_module):
+    with pytest.raises(RuntimeError, match="Blob service client has not been initialized"):
+        scanner_module.move_blob_to_quarantine(
+            MagicMock(),
+            "datahub",
+            "file.txt",
+            {"avscan": "fail"},
+            {"quarantine_container_name": "quarantine"},
+        )
