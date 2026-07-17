@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/python:3.14-dev@sha256:195460197c7894eed2f7155c3cbca73bcc6fc57338de89e42c4dbe3aba9cf135 AS builder
+FROM cgr.dev/chainguard/python:latest-dev AS builder
 
 ARG GOC_ROOT_A_FINGERPRINT="FE:E0:9E:77:43:BF:D4:3E:D7:D4:D3:ED:50:6C:C7:9D:2D:90:70:FF:A9:29:91:16:87:D4:27:33:70:BE:A3:06"
 ARG GOC_ROOT_A_URL="https://raw.githubusercontent.com/gccloudone-aurora-collab/goc-root-cert-mirror/main/certs/GoC-GdC-Root-A.crt"
@@ -24,13 +24,13 @@ ENV PIP_NO_COMPILE=1
 
 RUN python3 -m venv "$VIRTUAL_ENV"
 
-COPY app/requirements.txt /tmp/requirements.txt
+COPY clamav-blobavscan/requirements.txt /tmp/requirements.txt
 
 RUN python3 -m pip install --no-cache-dir --requirement /tmp/requirements.txt
 
 USER nonroot
 
-FROM cgr.dev/chainguard/python:3.14-dev@sha256:195460197c7894eed2f7155c3cbca73bcc6fc57338de89e42c4dbe3aba9cf135 AS runtime-packages
+FROM cgr.dev/chainguard/python:latest-dev AS runtime-packages
 
 USER root
 
@@ -69,7 +69,7 @@ COPY freshclam.conf /runtime/etc/clamav/freshclam.conf
 
 USER nonroot
 
-FROM cgr.dev/chainguard/python:3.14@sha256:28ed0c3de5c583ff972448d50cd6f1dc5547f3cc2167532a05b420743b7dffb5 AS final-base
+FROM cgr.dev/chainguard/python:latest AS final-base
 
 FROM final-base AS final
 
@@ -107,11 +107,11 @@ COPY --from=builder /etc/ssl/certs/ /etc/ssl/certs/
 
 # Copy Python app
 COPY --from=builder --chown=nonroot:nonroot "$VIRTUAL_ENV" "$VIRTUAL_ENV"
-COPY --chown=nonroot:nonroot app/ /app/
+COPY --chown=nonroot:nonroot clamav-blobavscan/ /clamav-blobavscan/
 
-WORKDIR /app
+WORKDIR /clamav-blobavscan
 
 USER nonroot
 
 ENTRYPOINT []
-CMD ["/bin/bash", "/app/entrypoint.sh"]
+CMD ["/bin/bash", "/clamav-blobavscan/entrypoint.sh"]
