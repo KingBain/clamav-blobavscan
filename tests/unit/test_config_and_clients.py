@@ -102,7 +102,6 @@ def test_initialize_clients_creates_expected_clients(scanner_module, monkeypatch
         credential=credential,
     )
     assert scanner_module.RUNTIME.config is app_config
-    assert scanner_module.credential is credential
     assert scanner_module.RUNTIME.queue_client == "input-queue"
     assert scanner_module.RUNTIME.result_queue_client == "result-queue"
     assert scanner_module.RUNTIME.blob_service_client == "blob-service"

@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 
 def test_create_result_message_handles_clean_and_infected_results(scanner_module):
     start = MagicMock()
@@ -68,6 +70,11 @@ def test_main_uses_default_process_function(scanner_module, monkeypatch):
 
     process_message.assert_called_once_with(message)
     scanner_module.RUNTIME.queue_client.delete_message.assert_called_once_with(message)
+
+
+def test_main_requires_initialized_queue_client(scanner_module):
+    with pytest.raises(RuntimeError, match="Queue client has not been initialized"):
+        scanner_module.main()
 
 
 def test_run_initializes_clients_and_starts_main(scanner_module, monkeypatch):
