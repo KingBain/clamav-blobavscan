@@ -38,9 +38,7 @@ def get_config():
         "CLIENT_ID": os.getenv("CLIENT_ID"),
         "queue_name": os.getenv("queue_name") or "virus-scan",
         "result_queue_name": os.getenv("result_queue_name") or "clamav-scan-result",
-        "quarantine_container_name": (
-            os.getenv("quarantine_container_name") or "datahub-quarantine"
-        ),
+        "quarantine_container_name": (os.getenv("quarantine_container_name") or "datahub-quarantine"),
         "datahub_container_name": os.getenv("container_name") or "datahub",
         "WORK_DIR": os.getenv("WORK_DIR") or "/datahub-temp",
         "ENABLE_QUARANTINE": os.getenv("ENABLE_QUARANTINE") or "false",
@@ -107,20 +105,14 @@ def scan_blob(
     while chunk_start < blob_size:
         chunk_end = min(chunk_start + chunk_size, blob_size) - 1
 
-        print(
-            f"FSDH - Downloading chunk {chunk_index} to tempfile: "
-            f"bytes {chunk_start} to {chunk_end}"
-        )
+        print(f"FSDH - Downloading chunk {chunk_index} to tempfile: " f"bytes {chunk_start} to {chunk_end}")
 
         with tempfile.NamedTemporaryFile(
             delete=True,
             suffix="filechunk",
             dir=work_dir,
         ) as temp_file:
-            print(
-                f"FSDH - chunk scan as tempfile: {blob_full_name} "
-                f"chunk {chunk_index} tempfile {temp_file.name}"
-            )
+            print(f"FSDH - chunk scan as tempfile: {blob_full_name} " f"chunk {chunk_index} tempfile {temp_file.name}")
 
             download = blob_client.download_blob(
                 offset=chunk_start,
@@ -141,16 +133,12 @@ def scan_blob(
 
             result = clamav_socket.scan_file(temp_file.name)
 
-            print(
-                f"FSDH - chunk scan completed: " f"{blob_full_name} chunk {chunk_index}"
-            )
+            print(f"FSDH - chunk scan completed: " f"{blob_full_name} chunk {chunk_index}")
 
             threat_found = False
 
             if result is None:
-                print(
-                    f"FSDH - scan result None: " f"{blob_full_name} chunk {chunk_index}"
-                )
+                print(f"FSDH - scan result None: " f"{blob_full_name} chunk {chunk_index}")
             else:
                 for filename, scan_details in result.items():
                     status, virus = scan_details
@@ -166,11 +154,7 @@ def scan_blob(
                         )
 
                     elif status == "OK":
-                        print(
-                            f"FSDH - chunk result OK: "
-                            f"{blob_full_name} chunk {chunk_index} "
-                            f"{filename}"
-                        )
+                        print(f"FSDH - chunk result OK: " f"{blob_full_name} chunk {chunk_index} " f"{filename}")
 
                     else:
                         print(
@@ -237,23 +221,16 @@ def wait_for_copy_completion(quarantine_blob_client):
     while True:
         blob_properties = quarantine_blob_client.get_blob_properties()
 
-        status, status_description = get_copy_status(
-            getattr(blob_properties, "copy", None)
-        )
+        status, status_description = get_copy_status(getattr(blob_properties, "copy", None))
 
         if status == "success":
             return
 
         if status in ("failed", "aborted"):
-            raise RuntimeError(
-                f"Blob copy {status}: "
-                f"{status_description or 'no details available'}"
-            )
+            raise RuntimeError(f"Blob copy {status}: " f"{status_description or 'no details available'}")
 
         if time.monotonic() >= deadline:
-            raise TimeoutError(
-                "Blob copy did not finish within " f"{COPY_TIMEOUT_SECONDS} seconds"
-            )
+            raise TimeoutError("Blob copy did not finish within " f"{COPY_TIMEOUT_SECONDS} seconds")
 
         time.sleep(COPY_POLL_INTERVAL_SECONDS)
 
@@ -289,10 +266,7 @@ def move_blob_to_quarantine(
     )
 
     if quarantine_blob_client.exists():
-        print(
-            f"FSDH - blob {source_blob_name} already exists "
-            "in quarantine container, deleting"
-        )
+        print(f"FSDH - blob {source_blob_name} already exists " "in quarantine container, deleting")
 
         quarantine_blob_client.delete_blob()
 
@@ -348,9 +322,7 @@ def process_message(message, app_config=None):
     print(f"FSDH - processing blob: {blob_name_full}")
 
     target_containers = [
-        item.strip().lower()
-        for item in app_config["datahub_container_name"].split(",")
-        if item.strip()
+        item.strip().lower() for item in app_config["datahub_container_name"].split(",") if item.strip()
     ]
 
     if blob_name_container.lower() not in target_containers:
