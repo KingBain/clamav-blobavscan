@@ -18,9 +18,9 @@ def main():
     assert blob_client.get_blob_properties().metadata == {"avscan": "ok"}
 
     result_queue = QueueClient.from_connection_string(CONNECTION_STRING, RESULT_QUEUE)
-    pages = list(result_queue.receive_messages(messages_per_page=1).by_page())
-    assert pages and pages[0], "Expected a scan-result queue message"
-    result = json.loads(pages[0][0].content)
+    messages = list(result_queue.receive_messages(messages_per_page=1))
+    assert messages, "Expected a scan-result queue message"
+    result = json.loads(messages[0].content)
     assert result["ScanError"] == ""
     assert result["UpdatedBlobMetadata"] == {"avscan": "ok"}
 
