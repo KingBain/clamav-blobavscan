@@ -11,7 +11,6 @@ CONTAINER = os.environ["container_name"]
 BLOB_NAME = "local-e2e/clean.txt"
 RESULT_QUEUE = os.environ["result_queue_name"]
 
-
 def main():
     blob_service = BlobServiceClient.from_connection_string(CONNECTION_STRING)
     blob_client = blob_service.get_blob_client(CONTAINER, BLOB_NAME)
@@ -24,6 +23,7 @@ def main():
     assert result["ScanError"] == ""
     assert result["UpdatedBlobMetadata"] == {"avscan": "ok"}
 
+    print("✅ E2E Test Verification Successful: Blob metadata and queue result are correct!")
 
 if __name__ == "__main__":
     main()
