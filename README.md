@@ -123,6 +123,21 @@ From `requirements.txt`:
 
 ## 🛠️ Development
 
+### Local Azure-compatible end-to-end test
+
+The `tests/local-e2e` harness runs the production scanner image against
+[Azurite](https://github.com/Azure/Azurite), without an Azure subscription. It creates a
+clean test blob, sends the same Base64-encoded Blob-created queue event that production
+uses, runs the scanner once, and verifies both the Blob metadata and result-queue message.
+
+```bash
+./tests/local-e2e/run.sh
+```
+
+This test downloads ClamAV definitions and therefore needs Docker and network access. The
+scanner uses `STORAGE_CONNECTION_STRING` for Azurite; production continues to use
+`STORAGE_ACCOUNT` plus managed identity.
+
 Run the container in interactive mode for debugging:
 
 ```bash

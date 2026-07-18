@@ -15,7 +15,7 @@ on:
       - "pytest.ini"
       - "pyproject.toml"
       - "requirements-dev.txt"
-      - ".github/workflows/pr-build.yml"
+      - ".github/workflows/pr-build-validation.yml"
 
   push:
     branches:
@@ -30,7 +30,7 @@ on:
       - "pytest.ini"
       - "pyproject.toml"
       - "requirements-dev.txt"
-      - ".github/workflows/pr-build.yml"
+      - ".github/workflows/pr-build-validation.yml"
 
 concurrency:
   group: >-
@@ -167,3 +167,25 @@ jobs:
           bats \
             --show-output-of-passing-tests \
             tests/container/
+
+  local-e2e:
+    name: Azurite Local End-to-End Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Azurite local end-to-end test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ./tests/local-e2e/run.sh
